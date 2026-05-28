@@ -48,7 +48,7 @@ program
       const mode = t.alertOnly ? chalk.yellow(" [alert-only]") : "";
       console.log(`  ${status} ${chalk.bold(t.name)} [${t.id}]${mode}`);
       console.log(chalk.dim(`    ${describeSchedule(t.schedule)}${lastRun}`));
-      console.log(chalk.dim(`    "${t.prompt.slice(0, 70)}"`));
+      console.log(chalk.dim(`    "${t.prompt}"`));
       if (t.alertCondition) console.log(chalk.dim(`    Alert when: ${t.alertCondition}`));
       if (t.allowedTools?.length) console.log(chalk.dim(`    Tools: ${t.allowedTools.join(", ")}`));
       console.log();
@@ -216,7 +216,7 @@ async function createFromNaturalLanguage(request: string): Promise<void> {
   console.log(chalk.bold("  Here's what I'll set up:\n"));
   console.log(`  Name:      ${chalk.bold(config.name)}`);
   console.log(`  Schedule:  ${chalk.bold(describeSchedule(config.schedule))} ${chalk.dim(`(${config.schedule})`)}`);
-  console.log(`  Prompt:    ${chalk.dim(`"${config.prompt.slice(0, 80)}"`)}`);
+  console.log(`  Prompt:    ${chalk.dim(`"${config.prompt}"`)}`);
   if (config.alertOnly) {
     console.log(`  Mode:      ${chalk.yellow("Alert-only")} — notify when: ${config.alertCondition}`);
   } else {

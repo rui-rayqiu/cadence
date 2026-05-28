@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import type { Task, RunLog } from "./types.js";
 import { addLog, updateTask } from "./store.js";
 import { notify } from "./notify.js";
@@ -17,18 +17,31 @@ export function runTask(task: Task): Promise<RunLog> {
       }
     }
 
-    const proc = execFile("claude", args, {
+    const proc = spawn("claude", args, {
       cwd: task.workingDir || process.cwd(),
-      timeout: 120_000,
-      maxBuffer: 1024 * 1024,
-    }, (error, stdout, stderr) => {
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 600_000,
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (chunk: Buffer) => {
+      if (stdout.length < 10000) stdout += chunk.toString();
+    });
+
+    proc.stderr.on("data", (chunk: Buffer) => {
+      if (stderr.length < 5000) stderr += chunk.toString();
+    });
+
+    proc.on("close", (code) => {
       const log: RunLog = {
         taskId: task.id,
         timestamp: new Date().toISOString(),
         duration: Date.now() - start,
-        exitCode: (typeof error?.code === "number" ? error.code : proc.exitCode) ?? 0,
-        stdout: stdout.slice(0, 5000),
-        stderr: stderr.slice(0, 2000),
+        exitCode: code ?? 0,
+        stdout: stdout.slice(0, 10000),
+        stderr: stderr.slice(0, 5000),
       };
 
       const result = log.exitCode === 0 ? "success" : "error";

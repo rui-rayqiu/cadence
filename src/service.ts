@@ -89,7 +89,23 @@ function isRunningMac(): { installed: boolean; running: boolean; pid?: string } 
 const SYSTEMD_NAME = "cadence";
 const SYSTEMD_PATH = resolve(homedir(), ".config/systemd/user", `${SYSTEMD_NAME}.service`);
 
+function hasSystemd(): boolean {
+  try {
+    execSync("systemctl --user --version", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const PID_FILE = resolve(LOG_DIR, "scheduler.pid");
+
 function installLinux(projectDir: string): void {
+  if (!hasSystemd()) {
+    installLinuxNohup(projectDir);
+    return;
+  }
+
   const nodePath = getNodePath();
   const cliPath = resolve(projectDir, "dist/cli.js");
 
@@ -123,30 +139,68 @@ WantedBy=default.target
   console.log(chalk.dim(`  It will start automatically on login.`));
 }
 
+function installLinuxNohup(projectDir: string): void {
+  const nodePath = getNodePath();
+  const cliPath = resolve(projectDir, "dist/cli.js");
+
+  execSync(
+    `nohup ${nodePath} ${cliPath} start >> ${LOG_DIR}/scheduler.log 2>> ${LOG_DIR}/scheduler.err & echo $! > ${PID_FILE}`,
+    { cwd: projectDir, shell: "/bin/sh" }
+  );
+
+  const pid = readFileSync(PID_FILE, "utf8").trim();
+  console.log(chalk.green(`✓ Cadence scheduler started in background (PID ${pid}).`));
+  console.log(chalk.dim(`  Logs: ${LOG_DIR}/scheduler.log`));
+  console.log(chalk.dim(`  PID file: ${PID_FILE}`));
+  console.log(chalk.yellow(`  Note: This won't survive a reboot. Run 'cadence install' again after restart.`));
+}
+
 function uninstallLinux(): void {
-  if (!existsSync(SYSTEMD_PATH)) {
-    console.log(chalk.dim("Cadence is not installed as a systemd service."));
+  if (hasSystemd() && existsSync(SYSTEMD_PATH)) {
+    try { execSync(`systemctl --user disable --now ${SYSTEMD_NAME}`); } catch {}
+    unlinkSync(SYSTEMD_PATH);
+    try { execSync("systemctl --user daemon-reload"); } catch {}
+    console.log(chalk.green("✓ Cadence systemd service removed."));
     return;
   }
-  try { execSync(`systemctl --user disable --now ${SYSTEMD_NAME}`); } catch {}
-  unlinkSync(SYSTEMD_PATH);
-  try { execSync("systemctl --user daemon-reload"); } catch {}
-  console.log(chalk.green("✓ Cadence systemd service removed."));
+
+  if (existsSync(PID_FILE)) {
+    const pid = readFileSync(PID_FILE, "utf8").trim();
+    try { execSync(`kill ${pid}`); } catch {}
+    unlinkSync(PID_FILE);
+    console.log(chalk.green(`✓ Cadence scheduler stopped (PID ${pid}).`));
+    return;
+  }
+
+  console.log(chalk.dim("Cadence is not installed as a background service."));
 }
 
 function isRunningLinux(): { installed: boolean; running: boolean; pid?: string } {
-  if (!existsSync(SYSTEMD_PATH)) return { installed: false, running: false };
-  try {
-    const output = execSync(`systemctl --user is-active ${SYSTEMD_NAME}`, { encoding: "utf8" });
-    if (output.trim() === "active") {
-      const pidOutput = execSync(`systemctl --user show ${SYSTEMD_NAME} --property=MainPID`, { encoding: "utf8" });
-      const pid = pidOutput.trim().split("=")[1];
-      return { installed: true, running: true, pid };
+  if (hasSystemd() && existsSync(SYSTEMD_PATH)) {
+    try {
+      const output = execSync(`systemctl --user is-active ${SYSTEMD_NAME}`, { encoding: "utf8" });
+      if (output.trim() === "active") {
+        const pidOutput = execSync(`systemctl --user show ${SYSTEMD_NAME} --property=MainPID`, { encoding: "utf8" });
+        const pid = pidOutput.trim().split("=")[1];
+        return { installed: true, running: true, pid };
+      }
+      return { installed: true, running: false };
+    } catch {
+      return { installed: true, running: false };
     }
-    return { installed: true, running: false };
-  } catch {
-    return { installed: true, running: false };
   }
+
+  if (existsSync(PID_FILE)) {
+    const pid = readFileSync(PID_FILE, "utf8").trim();
+    try {
+      execSync(`kill -0 ${pid}`, { stdio: "ignore" });
+      return { installed: true, running: true, pid };
+    } catch {
+      return { installed: true, running: false };
+    }
+  }
+
+  return { installed: false, running: false };
 }
 
 // --- Public API ---

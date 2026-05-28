@@ -10,7 +10,37 @@ cd cadence
 npm install
 cd web && npm install && cd ..
 npm run build
-npm link  # makes `cadence` available globally
+```
+
+Then make `cadence` available globally (pick one):
+
+```bash
+# Option A: npm link (requires write access to global node_modules)
+npm link
+
+# Option B: add an alias (works everywhere, no permissions needed)
+# Replace /path/to/cadence with your actual path, e.g. /opt/workspace/cadence
+# Use ~/.zshrc for zsh, ~/.bashrc for bash, or ~/.profile for others
+echo 'alias cadence="node /path/to/cadence/dist/cli.js"' >> ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc  # or: source ~/.zshrc
+
+# Example:
+echo 'alias cadence="node /opt/workspace/cadence/dist/cli.js"' >> ~/.bashrc
+source ~/.bashrc
+
+# Option C: symlink to a local bin directory (works with any shell)
+mkdir -p ~/.local/bin
+ln -s /path/to/cadence/dist/cli.js ~/.local/bin/cadence
+chmod +x /path/to/cadence/dist/cli.js
+
+# Make sure ~/.local/bin is in your PATH (add to your shell's rc file if not):
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc
+```
+
+After any option, verify it works:
+```bash
+cadence --version
 ```
 
 ## Quick start
