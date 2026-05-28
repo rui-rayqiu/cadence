@@ -43,14 +43,30 @@ program
     for (const t of tasks) {
       const status = t.enabled ? chalk.green("●") : chalk.dim("○");
       const lastRun = t.lastRun
-        ? chalk.dim(` (last: ${new Date(t.lastRun).toLocaleString()})`)
-        : "";
+        ? chalk.dim(`Last run: ${new Date(t.lastRun).toLocaleString()}`)
+        : chalk.dim("Never run");
       const mode = t.alertOnly ? chalk.yellow(" [alert-only]") : "";
+
       console.log(`  ${status} ${chalk.bold(t.name)} [${t.id}]${mode}`);
-      console.log(chalk.dim(`    ${describeSchedule(t.schedule)}${lastRun}`));
-      console.log(chalk.dim(`    "${t.prompt}"`));
-      if (t.alertCondition) console.log(chalk.dim(`    Alert when: ${t.alertCondition}`));
-      if (t.allowedTools?.length) console.log(chalk.dim(`    Tools: ${t.allowedTools.join(", ")}`));
+      console.log();
+      console.log(chalk.dim(`    Schedule:  ${describeSchedule(t.schedule)}`));
+      console.log(chalk.dim(`    Status:    ${lastRun}`));
+      console.log();
+      console.log(chalk.dim(`    Prompt:    "${t.prompt}"`));
+      if (t.alertCondition) {
+        console.log();
+        console.log(chalk.dim(`    Alert when: ${t.alertCondition}`));
+      }
+      if (t.allowedTools?.length) {
+        console.log();
+        console.log(chalk.dim(`    Tools:     ${t.allowedTools.join(", ")}`));
+      }
+      if (t.workingDir) {
+        console.log();
+        console.log(chalk.dim(`    Directory: ${t.workingDir}`));
+      }
+      console.log();
+      console.log(chalk.dim(`  ${"─".repeat(60)}`));
       console.log();
     }
   });
@@ -98,16 +114,26 @@ program
     }
 
     for (const task of toRun) {
-      console.log(chalk.blue(`▶ Running "${task.name}"...`));
+      console.log(chalk.blue(`\n  ▶ Running "${task.name}"...\n`));
       const log = await runTask(task);
       if (log.exitCode === 0) {
         console.log(chalk.green(`  ✓ Done in ${log.duration}ms`));
-        if (log.stdout.trim()) console.log(`\n${log.stdout.trim()}\n`);
+        if (log.stdout.trim()) {
+          console.log();
+          console.log(log.stdout.trim());
+          console.log();
+        }
       } else {
         console.log(chalk.red(`  ✗ Failed (exit ${log.exitCode})`));
-        if (log.stderr.trim()) console.log(chalk.red(log.stderr.trim()));
+        if (log.stderr.trim()) {
+          console.log();
+          console.log(chalk.red(log.stderr.trim()));
+          console.log();
+        }
       }
+      console.log(chalk.dim(`  ${"─".repeat(60)}`));
     }
+    console.log();
   });
 
 program
@@ -132,22 +158,29 @@ program
         : chalk.red("✗");
       const time = new Date(log.timestamp).toLocaleString();
 
-      console.log(`  ${icon} ${chalk.bold(name)} — ${time} (${log.duration}ms)`);
+      console.log(`  ${icon} ${chalk.bold(name)}`);
+      console.log(chalk.dim(`    ${time} · ${log.duration}ms`));
 
       if (log.exitCode !== 0 && log.stderr.trim()) {
+        console.log();
         console.log(chalk.red(`    Error: ${log.stderr.trim().split("\n")[0]}`));
       }
 
       if (log.stdout.trim()) {
+        console.log();
         const allLines = log.stdout.trim().split("\n");
         const lines = allLines.slice(0, maxLines);
         for (const line of lines) {
           console.log(chalk.dim(`    ${line}`));
         }
         if (allLines.length > maxLines) {
+          console.log();
           console.log(chalk.dim(`    ... (${allLines.length - maxLines} more lines, use --full to see all)`));
         }
       }
+
+      console.log();
+      console.log(chalk.dim(`  ${"─".repeat(60)}`));
       console.log();
     }
   });
@@ -214,21 +247,28 @@ async function createFromNaturalLanguage(request: string): Promise<void> {
   }
 
   console.log(chalk.bold("  Here's what I'll set up:\n"));
+
   console.log(`  Name:      ${chalk.bold(config.name)}`);
+  console.log();
   console.log(`  Schedule:  ${chalk.bold(describeSchedule(config.schedule))} ${chalk.dim(`(${config.schedule})`)}`);
+  console.log();
   console.log(`  Prompt:    ${chalk.dim(`"${config.prompt}"`)}`);
+  console.log();
   if (config.alertOnly) {
     console.log(`  Mode:      ${chalk.yellow("Alert-only")} — notify when: ${config.alertCondition}`);
+    console.log();
   } else {
     console.log(`  Mode:      ${chalk.green("Always notify")}`);
+    console.log();
   }
   if (config.allowedTools.length) {
     console.log(`  Tools:     ${config.allowedTools.join(", ")}`);
+    console.log();
   }
   if (config.workingDir) {
     console.log(`  Directory: ${config.workingDir}`);
+    console.log();
   }
-  console.log();
 
   const confirmed = await confirm("  Create this task?");
 
@@ -289,7 +329,6 @@ function showDashboard(): void {
   const logs = getLogs();
   const service = isRunning();
 
-  // Service status
   console.log(chalk.bold("\n  Scheduler\n"));
   if (service.running) {
     console.log(`  ${chalk.green("●")} Running (PID ${service.pid})`);
@@ -299,15 +338,16 @@ function showDashboard(): void {
     console.log(`  ${chalk.dim("○")} Not running`);
   }
 
-  // Task summary
+  console.log();
+  console.log(chalk.dim(`  ${"─".repeat(60)}`));
+
   console.log(chalk.bold("\n  Tasks\n"));
   if (tasks.length === 0) {
     console.log(chalk.dim("  No tasks configured."));
   } else {
     const enabled = tasks.filter((t) => t.enabled).length;
     const disabled = tasks.length - enabled;
-    console.log(`  ${enabled} active${disabled > 0 ? `, ${disabled} disabled` : ""}`);
-    console.log();
+    console.log(`  ${enabled} active${disabled > 0 ? `, ${disabled} disabled` : ""}\n`);
     for (const t of tasks) {
       const icon = t.enabled ? chalk.green("●") : chalk.dim("○");
       const lastInfo = t.lastRun
@@ -317,7 +357,9 @@ function showDashboard(): void {
     }
   }
 
-  // Recent activity
+  console.log();
+  console.log(chalk.dim(`  ${"─".repeat(60)}`));
+
   console.log(chalk.bold("\n  Recent Activity\n"));
   const recent = logs.slice(-5);
   if (recent.length === 0) {
@@ -330,6 +372,7 @@ function showDashboard(): void {
       const task = tasks.find((t) => t.id === log.taskId);
       const name = task?.name ?? log.taskId;
       console.log(`  ${icon} ${name} — ${timeAgo(log.timestamp)} (${log.duration}ms)`);
+      console.log();
     }
   }
 

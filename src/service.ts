@@ -91,9 +91,18 @@ const SYSTEMD_PATH = resolve(homedir(), ".config/systemd/user", `${SYSTEMD_NAME}
 
 function hasSystemd(): boolean {
   try {
-    execSync("systemctl --user --version", { stdio: "ignore" });
+    execSync("systemctl --user is-system-running", { stdio: "pipe", timeout: 5000 });
     return true;
-  } catch {
+  } catch (err: any) {
+    const stderr = err?.stderr?.toString() || "";
+    if (stderr.includes("No medium found") || stderr.includes("Failed to connect")) {
+      return false;
+    }
+    // "degraded" or "running" means systemd works, other errors mean it's available but has issues
+    const stdout = err?.stdout?.toString() || "";
+    if (stdout.includes("running") || stdout.includes("degraded")) {
+      return true;
+    }
     return false;
   }
 }
