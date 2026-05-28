@@ -1,0 +1,50 @@
+{
+  "name": "cadence-scheduler",
+  "version": "0.1.0",
+  "description": "Schedule recurring Claude Code tasks with natural language",
+  "type": "module",
+  "license": "MIT",
+  "author": "Rui Qiu",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rui-rayqiu/cadence"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "scheduler",
+    "cron",
+    "automation",
+    "ai",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "cadence": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json && cd web && npx vite build",
+    "build:server": "tsc --project tsconfig.json",
+    "build:web": "cd web && npx vite build",
+    "dev": "tsx src/cli.ts",
+    "dev:web": "cd web && npx vite",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "conf": "^13.1.0",
+    "cors": "^2.8.6",
+    "croner": "^9.0.0",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
