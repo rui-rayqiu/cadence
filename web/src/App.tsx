@@ -50,6 +50,10 @@ export function App() {
   const [connected, setConnected] = useState(true);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [expandedPrompts, setExpandedPrompts] = useState<Set<string>>(new Set());
+  const [editingTask, setEditingTask] = useState<string | null>(null);
+  const [editInput, setEditInput] = useState("");
+  const [editPreview, setEditPreview] = useState<{ taskId: string; config: AnalyzedConfig } | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -115,6 +119,27 @@ export function App() {
     setRunningTask(id);
     await api.runTaskNow(id);
     setRunningTask(null);
+    refresh();
+  }
+
+  async function handleEditSubmit(taskId: string) {
+    if (!editInput.trim()) return;
+    setEditLoading(true);
+    try {
+      const config = await api.editTask(taskId, editInput.trim());
+      setEditPreview({ taskId, config });
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    }
+    setEditLoading(false);
+  }
+
+  async function handleEditConfirm() {
+    if (!editPreview) return;
+    await api.applyEdit(editPreview.taskId, editPreview.config);
+    setEditPreview(null);
+    setEditingTask(null);
+    setEditInput("");
     refresh();
   }
 
@@ -224,6 +249,9 @@ export function App() {
                     <><span className="spinner" style={{ width: 9, height: 9, borderWidth: 1.5 }} /> Testing...</>
                   ) : "⚡ Test once"}
                 </button>
+                <button onClick={() => { setEditingTask(editingTask === task.id ? null : task.id); setEditInput(""); setEditPreview(null); }}>
+                  {editingTask === task.id ? "Cancel edit" : "Edit"}
+                </button>
                 <button onClick={() => handleToggle(task.id, !task.enabled)}>
                   {task.enabled ? "Disable" : "Enable"}
                 </button>
@@ -252,6 +280,44 @@ export function App() {
             )}
             {task.alertCondition && (
               <div className="task-alert">Alert when: {task.alertCondition}</div>
+            )}
+
+            {editingTask === task.id && (
+              <div className="edit-area">
+                <div className="edit-input-row">
+                  <input
+                    value={editInput}
+                    onChange={(e) => setEditInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleEditSubmit(task.id); }}
+                    placeholder='Describe the change... e.g. "change to every 4 hours" or "also check for spam"'
+                    disabled={editLoading}
+                    autoFocus
+                  />
+                  <button onClick={() => handleEditSubmit(task.id)} disabled={editLoading || !editInput.trim()}>
+                    {editLoading ? <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} /> : "Apply"}
+                  </button>
+                </div>
+                {editLoading && (
+                  <div style={{ color: "#a78bfa", fontSize: "0.85rem", marginTop: "0.5rem" }}>
+                    Claude is modifying the task...
+                  </div>
+                )}
+                {editPreview && editPreview.taskId === task.id && (
+                  <div className="edit-preview">
+                    <div className="preview-field"><span className="label">Name</span><span>{editPreview.config.name}</span></div>
+                    <div className="preview-field"><span className="label">Schedule</span><span>{editPreview.config.schedule}</span></div>
+                    <div className="preview-field"><span className="label">Prompt</span><span>{editPreview.config.prompt}</span></div>
+                    <div className="preview-field"><span className="label">Mode</span><span>{editPreview.config.alertOnly ? `Alert-only: ${editPreview.config.alertCondition}` : "Always notify"}</span></div>
+                    {editPreview.config.allowedTools.length > 0 && (
+                      <div className="preview-field"><span className="label">Tools</span><span>{editPreview.config.allowedTools.join(", ")}</span></div>
+                    )}
+                    <div className="preview-actions">
+                      <button className="btn-confirm" onClick={handleEditConfirm}>Save changes</button>
+                      <button className="btn-cancel" onClick={() => setEditPreview(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ))}

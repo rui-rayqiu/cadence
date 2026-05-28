@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { existsSync } from "node:fs";
 import { getTasks, removeTask, updateTask, getLogs, removeLog } from "./store.js";
 import { runTask } from "./runner.js";
-import { analyzeRequest } from "./analyze.js";
+import { analyzeRequest, tweakTask } from "./analyze.js";
 import { addTask } from "./store.js";
 import { isRunning } from "./service.js";
 import { startScheduler, stopScheduler } from "./scheduler.js";
@@ -82,6 +82,32 @@ export function createApi() {
     if (!task) { res.status(404).json({ error: "Task not found" }); return; }
     const log = await runTask(task);
     res.json(log);
+  });
+
+  app.post("/api/tasks/:id/edit", async (req, res) => {
+    const { modification } = req.body;
+    if (!modification) { res.status(400).json({ error: "modification is required" }); return; }
+    const tasks = getTasks();
+    const task = tasks.find((t) => t.id === req.params.id);
+    if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+    try {
+      const config = await tweakTask(task, modification);
+      res.json(config);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/tasks/:id", (req, res) => {
+    const { name, prompt, schedule, alertOnly, alertCondition, allowedTools, workingDir } = req.body;
+    const task = updateTask(req.params.id, {
+      name, prompt, schedule, alertOnly,
+      alertCondition: alertOnly ? alertCondition : undefined,
+      allowedTools: allowedTools?.length > 0 ? allowedTools : undefined,
+      workingDir: workingDir || undefined,
+    });
+    if (task) res.json(task);
+    else res.status(404).json({ error: "Task not found" });
   });
 
   app.get("/api/logs", (req, res) => {

@@ -302,6 +302,63 @@ header h1 {
   background: rgba(251, 113, 133, 0.06);
 }
 
+.edit-area {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #2a2d42;
+}
+
+.edit-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.edit-input-row input {
+  flex: 1;
+  padding: 0.6rem 0.85rem;
+  background: #0f1019;
+  border: 1px solid #3b3d5c;
+  border-radius: 10px;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.edit-input-row input:focus {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.1);
+}
+
+.edit-input-row input::placeholder {
+  color: #555a78;
+}
+
+.edit-input-row button {
+  padding: 0.6rem 1rem;
+  background: linear-gradient(135deg, #818cf8, #a78bfa);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.edit-input-row button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.edit-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 12px;
+}
+
 .alert-badge {
   font-size: 0.7rem;
   background: rgba(251, 191, 36, 0.1);

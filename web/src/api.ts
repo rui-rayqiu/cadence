@@ -62,6 +62,25 @@ export async function deleteLog(taskId: string, timestamp: string) {
   });
 }
 
+export async function editTask(id: string, modification: string) {
+  const res = await fetch(`${BASE}/tasks/${id}/edit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ modification }),
+  });
+  if (!res.ok) throw new Error((await res.json()).error);
+  return res.json();
+}
+
+export async function applyEdit(id: string, config: any) {
+  const res = await fetch(`${BASE}/tasks/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  return res.json();
+}
+
 export async function startScheduler() {
   const res = await fetch(`${BASE}/scheduler/start`, { method: "POST" });
   return res.json();

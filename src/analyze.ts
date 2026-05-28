@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import type { Task } from "./types.js";
 
 export interface AnalyzedTask {
   name: string;
@@ -87,6 +88,55 @@ export async function analyzeRequest(userInput: string): Promise<AnalyzedTask> {
     }, (error, stdout, stderr) => {
       if (error) {
         reject(new Error(`Claude analysis failed: ${stderr || error.message}`));
+        return;
+      }
+
+      try {
+        const cleaned = stdout.trim()
+          .replace(/^```json?\n?/m, "")
+          .replace(/\n?```$/m, "")
+          .trim();
+        const parsed = JSON.parse(cleaned) as AnalyzedTask;
+
+        if (!parsed.name || !parsed.prompt || !parsed.schedule) {
+          reject(new Error("Claude returned incomplete configuration"));
+          return;
+        }
+
+        resolve(parsed);
+      } catch (e) {
+        reject(new Error(`Could not parse Claude's response: ${stdout.slice(0, 200)}`));
+      }
+    });
+  });
+}
+
+export function tweakTask(task: Task, modification: string): Promise<AnalyzedTask> {
+  const prompt = `You are modifying an existing scheduled task. Here is the current configuration:
+
+{
+  "name": "${task.name}",
+  "prompt": ${JSON.stringify(task.prompt)},
+  "schedule": "${task.schedule}",
+  "alertOnly": ${task.alertOnly ?? false},
+  "alertCondition": ${JSON.stringify(task.alertCondition ?? null)},
+  "allowedTools": ${JSON.stringify(task.allowedTools ?? [])},
+  "workingDir": ${JSON.stringify(task.workingDir ?? null)}
+}
+
+The user wants to make this change: "${modification}"
+
+Apply ONLY the requested change. Keep everything else the same unless the change logically requires updating other fields (e.g. changing what the task does may require different tools).
+
+Output ONLY valid JSON (no markdown, no explanation, no code fences) with the updated configuration using the same fields as above.`;
+
+  return new Promise((resolve, reject) => {
+    execFile("claude", ["-p", prompt, "--output-format", "text"], {
+      timeout: 30_000,
+      maxBuffer: 1024 * 1024,
+    }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`Claude modification failed: ${stderr || error.message}`));
         return;
       }
 

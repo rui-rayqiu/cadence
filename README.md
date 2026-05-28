@@ -78,6 +78,20 @@ You can specify a working directory in natural language:
 cadence "daily at 9am run npm audit in ~/projects/my-app"
 ```
 
+### Edit a task
+
+Modify any task with natural language — Claude applies only the change you ask for:
+
+```bash
+cadence edit <id> change to every 4 hours
+cadence edit <id> also check for spam emails
+cadence edit <id> only alert me if there are high priority emails
+cadence edit <id> run in ~/projects/my-app instead
+cadence edit <id> rename to inbox-monitor
+```
+
+You'll see the updated config and confirm before anything changes.
+
 ### Manage tasks
 
 ```bash
@@ -129,6 +143,7 @@ This starts both the scheduler and a local web dashboard at `http://localhost:47
 ### What you can do in the UI
 
 - **Create tasks** — same natural language input as CLI, type in the text box and hit Enter
+- **Edit tasks** — click "Edit" on any task, describe the change in plain English, preview and confirm
 - **Start/stop scheduler** — click the badge in the top right
 - **Test tasks** — "⚡ Test once" button runs a task immediately (one-time, doesn't affect the schedule)
 - **Enable/disable tasks** — toggle without deleting
@@ -201,6 +216,7 @@ rm -rf ~/.cadence
 | Command | Description |
 |---|---|
 | `cadence "..."` | Create a task from natural language |
+| `cadence edit <id> <change>` | Modify a task with natural language |
 | `cadence list` | Show all tasks |
 | `cadence run [id]` | Test a task now (one-time) |
 | `cadence enable <id>` | Enable a paused task |

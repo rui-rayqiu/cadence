@@ -8,7 +8,7 @@ import { addTask, getTasks, removeTask, updateTask, getLogs } from "./store.js";
 import { startScheduler } from "./scheduler.js";
 import { runTask } from "./runner.js";
 import { install, uninstall, status as serviceStatus, isRunning } from "./service.js";
-import { analyzeRequest } from "./analyze.js";
+import { analyzeRequest, tweakTask } from "./analyze.js";
 import { describeSchedule } from "./schedule-parser.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -99,6 +99,65 @@ program
     const t = updateTask(id, { enabled: false });
     if (t) console.log(chalk.yellow(`○ ${t.name} disabled.`));
     else console.log(chalk.red(`Task ${id} not found.`));
+  });
+
+program
+  .command("edit <id> <modification...>")
+  .description("Modify a task with natural language")
+  .action(async (id, modParts) => {
+    const task = getTasks().find((t) => t.id === id);
+    if (!task) { console.log(chalk.red(`Task ${id} not found.`)); return; }
+
+    const modification = modParts.join(" ");
+    console.log(chalk.dim(`\n  Modifying "${task.name}" with Claude...\n`));
+
+    let config;
+    try {
+      config = await tweakTask(task, modification);
+    } catch (err: any) {
+      console.log(chalk.red(`  Error: ${err.message}`));
+      return;
+    }
+
+    console.log(chalk.bold("  Updated configuration:\n"));
+    console.log(`  Name:      ${chalk.bold(config.name)}`);
+    console.log();
+    console.log(`  Schedule:  ${chalk.bold(describeSchedule(config.schedule))} ${chalk.dim(`(${config.schedule})`)}`);
+    console.log();
+    console.log(`  Prompt:    ${chalk.dim(`"${config.prompt}"`)}`);
+    console.log();
+    if (config.alertOnly) {
+      console.log(`  Mode:      ${chalk.yellow("Alert-only")} — notify when: ${config.alertCondition}`);
+    } else {
+      console.log(`  Mode:      ${chalk.green("Always notify")}`);
+    }
+    if (config.allowedTools.length) {
+      console.log();
+      console.log(`  Tools:     ${config.allowedTools.join(", ")}`);
+    }
+    if (config.workingDir) {
+      console.log();
+      console.log(`  Directory: ${config.workingDir}`);
+    }
+    console.log();
+
+    const confirmed = await confirm("  Apply this change?");
+    if (!confirmed) {
+      console.log(chalk.dim("\n  Cancelled.\n"));
+      return;
+    }
+
+    updateTask(task.id, {
+      name: config.name,
+      prompt: config.prompt,
+      schedule: config.schedule,
+      alertOnly: config.alertOnly,
+      alertCondition: config.alertOnly ? config.alertCondition : undefined,
+      allowedTools: config.allowedTools.length > 0 ? config.allowedTools : undefined,
+      workingDir: config.workingDir || undefined,
+    });
+
+    console.log(chalk.green(`\n  ✓ Task "${config.name}" updated.\n`));
   });
 
 program
